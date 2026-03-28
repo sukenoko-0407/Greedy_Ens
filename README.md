@@ -6,8 +6,8 @@ Caruana-style Greedy Ensemble（重複選択あり）を実行するための最
 
 - `caruana_greedy_ensemble.py`
   - Greedy Ensemble本体
-  - `fit()`でモデル選択（`pred_*`を1本ずつ追加）
-  - `predict()`で最終アンサンブル予測を出力
+  - `fit()`でK-foldごとにモデル選択（`pred_*`を1本ずつ追加）
+  - `predict()`でK個のfoldアンサンブル予測を単純平均して出力
 - `run_greedy_ensemble.py`
   - CSV入力で実行できるCLI
   - 予測CSVと選択履歴JSONを出力
@@ -77,8 +77,8 @@ print(ens.history_frame().head())
 基本フローは以下です。
 
 1. `CaruanaGreedyEnsembler(...)`で設定
-2. `fit(train_or_trainval_df)`でGreedyにモデル選択（重複あり）
-3. `predict(any_df_with_pred_cols)`でアンサンブル予測
+2. `fit(train_or_trainval_df)`でK-foldごとにGreedy選択（重複あり）
+3. `predict(any_df_with_pred_cols)`でK foldの予測を単純平均
 
 ### コンストラクタ引数
 
@@ -88,6 +88,14 @@ print(ens.history_frame().head())
   - `None`なら指標ごとに自動判定。`r2/spearman/pcc/pearson/auc`は最大化、`rmse/mae/logloss`は最小化。
 - `n_iterations` (`int`, default=`100`)
   - モデルを追加する最大反復回数。
+- `n_splits` (`int`, default=`5`)
+  - K-foldの分割数。
+- `shuffle` (`bool`, default=`True`)
+  - fold分割前にサンプルをシャッフルするか。
+- `random_state` (`Optional[int]`, default=`42`)
+  - fold分割用の乱数シード。
+- `stratified` (`Optional[bool]`, default=`None`)
+  - `True`でStratified分割（2値ラベルのみ）。`None`時は`logloss/auc`で自動有効。
 - `pred_columns` (`Optional[Sequence[str]]`, default=`None`)
   - 使う予測列を明示指定。指定時は`pred_prefix`を使わない。
 - `pred_prefix` (`str`, default=`"pred_"`)
@@ -103,7 +111,8 @@ print(ens.history_frame().head())
 
 補足:
 
-- 最終重みは常に「best iterationまでの追加履歴」で確定します（固定仕様）。
+- 各foldの最終重みは「そのfoldのbest iterationまでの追加履歴」で確定します（固定仕様）。
+- `predict()`は各fold重みで計算した予測を単純平均して返します。
 
 ### 主なメソッド
 
@@ -118,10 +127,12 @@ print(ens.history_frame().head())
 
 - `best_score_`: ベストスコア
 - `best_iteration_`: ベスト反復番号
-- `selected_models_`: 最終的に採用された列名リスト（重複あり）
-- `model_counts_`: 列ごとの採用回数
-- `model_weights_`: `model_counts_`を正規化した重み
-- `history_`: 全反復の履歴
+- `selected_models_`: 全foldで採用された列名リスト（重複あり）
+- `model_counts_`: 全fold合算の採用回数
+- `model_weights_`: 全fold合算の採用回数を正規化した重み
+- `fold_model_weights_`: foldごとの重み辞書リスト
+- `fold_results_`: foldごとの学習・検証結果
+- `history_`: 全fold・全反復の履歴
 
 ### Train+Valで学習してTestへ適用する例
 
@@ -149,6 +160,7 @@ uv run python run_greedy_ensemble.py `
   --output ensemble_output.csv `
   --report-path ensemble_report.json `
   --metric spearman `
+  --n-splits 5 `
   --n-iterations 100 `
   --early-stopping-rounds 20
 ```

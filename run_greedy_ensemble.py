@@ -29,6 +29,10 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--metric", default="rmse", choices=["rmse", "mae", "r2", "spearman", "pcc", "pearson", "logloss", "auc"], help="Optimization metric")
     parser.add_argument("--maximize", action="store_true", help="Force maximize metric (default behavior depends on metric)")
     parser.add_argument("--n-iterations", type=int, default=100, help="Maximum number of greedy additions")
+    parser.add_argument("--n-splits", type=int, default=5, help="Number of folds for K-fold greedy ensemble fitting")
+    parser.add_argument("--no-shuffle", action="store_true", help="Disable shuffle before fold split")
+    parser.add_argument("--random-state", type=int, default=42, help="Random seed for fold split")
+    parser.add_argument("--stratified", action="store_true", help="Force stratified fold split (binary label only)")
     parser.add_argument("--early-stopping-rounds", type=int, default=None, help="Stop if no improvement for this many rounds")
     parser.add_argument("--tol", type=float, default=0.0, help="Minimum improvement threshold")
     parser.add_argument("--verbose", action="store_true", help="Verbose logging")
@@ -48,6 +52,10 @@ def main() -> None:
         metric=args.metric,
         maximize=True if args.maximize else None,
         n_iterations=args.n_iterations,
+        n_splits=args.n_splits,
+        shuffle=not args.no_shuffle,
+        random_state=args.random_state,
+        stratified=True if args.stratified else None,
         pred_columns=pred_columns,
         pred_prefix=args.pred_prefix,
         label_col=args.label_col,
@@ -68,20 +76,24 @@ def main() -> None:
     report = {
         "metric": ensembler.metric_name,
         "maximize": ensembler.maximize,
+        "n_splits": ensembler.n_splits,
         "best_score": ensembler.best_score_,
         "best_iteration": ensembler.best_iteration_,
         "n_selected_models": len(ensembler.selected_models_),
         "selected_models": ensembler.selected_models_,
         "model_counts": ensembler.model_counts_,
         "model_weights": ensembler.model_weights_,
+        "fold_model_weights": ensembler.fold_model_weights_,
+        "fold_results": ensembler.fold_results_,
         "history": ensembler.history_frame().to_dict(orient="records"),
     }
     report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
 
     print(f"[DONE] output: {output_path}")
     print(f"[DONE] report: {report_path}")
+    print(f"[CV] n_splits={ensembler.n_splits}")
     print(f"[BEST] score={ensembler.best_score_}, iter={ensembler.best_iteration_}")
-    print(f"[WEIGHTS] {ensembler.model_weights_}")
+    print(f"[AGG_WEIGHTS] {ensembler.model_weights_}")
 
 
 if __name__ == "__main__":
