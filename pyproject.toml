@@ -1,0 +1,15 @@
+[project]
+name = "greedy-ens"
+version = "0.1.0"
+description = "Caruana-style greedy ensemble selection with replacement"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "numpy>=1.26.0",
+  "pandas>=2.2.0",
+]
+
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
