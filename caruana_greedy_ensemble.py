@@ -117,7 +117,6 @@ class CaruanaGreedyEnsembler:
         label_col: str = "Label",
         early_stopping_rounds: Optional[int] = None,
         tol: float = 0.0,
-        use_best_iteration: bool = True,
         verbose: bool = False,
     ) -> None:
         metric = metric.lower()
@@ -141,7 +140,6 @@ class CaruanaGreedyEnsembler:
         self.label_col = label_col
         self.early_stopping_rounds = early_stopping_rounds
         self.tol = tol
-        self.use_best_iteration = use_best_iteration
         self.verbose = verbose
 
         self.pred_columns_: List[str] = []
@@ -266,7 +264,7 @@ class CaruanaGreedyEnsembler:
             best_iter = 1
             best_score = history[0].score
 
-        final_steps = history[:best_iter] if self.use_best_iteration else history
+        final_steps = history[:best_iter]
         final_models = [s.selected_model for s in final_steps]
         counts = dict(Counter(final_models))
         total = sum(counts.values())
@@ -310,7 +308,6 @@ def greedy_ensemble(
     label_col: str = "Label",
     early_stopping_rounds: Optional[int] = None,
     tol: float = 0.0,
-    use_best_iteration: bool = True,
     verbose: bool = False,
 ) -> Tuple[CaruanaGreedyEnsembler, np.ndarray]:
     """
@@ -326,7 +323,6 @@ def greedy_ensemble(
         label_col=label_col,
         early_stopping_rounds=early_stopping_rounds,
         tol=tol,
-        use_best_iteration=use_best_iteration,
         verbose=verbose,
     )
     ensembler.fit(df)
